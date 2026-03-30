@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-validate:
+    name: Lint & Syntax Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install lint tools
+        run: pip install ruff mypy
+
+      - name: Syntax check all Python files
+        run: |
+          python3 -c "
+          import ast, os, sys
+          errors = []
+          for root, dirs, files in os.walk('.'):
+              dirs[:] = [d for d in dirs if d not in ['__pycache__', '.git', 'venv', '.venv']]
+              for f in files:
+                  if f.endswith('.py'):
+                      path = os.path.join(root, f)
+                      try:
+                          ast.parse(open(path).read())
+                      except SyntaxError as e:
+                          errors.append(f'{path}: {e}')
+          if errors:
+              print('SYNTAX ERRORS:')
+              for e in errors: print(' ', e)
+              sys.exit(1)
+          count = sum(1 for r,d,fs in os.walk('.') for f in fs if f.endswith('.py'))
+          print(f'All {count} Python files valid')
+          "
+
+      - name: Ruff lint
+        run: ruff check . --select=E,W,F --ignore=E501,F401,F811 || true
+        # || true so lint warnings don't block PRs — we'll tighten this over time
+
+  dry-run:
+    name: Dry Run (all modes)
+    runs-on: ubuntu-latest
+    needs: lint-and-validate
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install core deps
+        run: pip install psutil
+
+      - name: Dry run — fileparser mode
+        run: |
+          python3 apex.py \
+            --mode fileparser \
+            --target-binary /bin/ls \
+            --format png \
+            --source \
+            --dry-run
+
+      - name: Dry run — network mode
+        run: |
+          python3 apex.py \
+            --mode network \
+            --target-binary /bin/cat \
+            --protocol http \
+            --target-port 8080 \
+            --source \
+            --dry-run
+
+      - name: Dry run — kernel mode
+        run: |
+          python3 apex.py \
+            --mode kernel \
+            --syscall-groups net,fs \
+            --dry-run
+
+      - name: Dry run — firmware mode (skip — needs firmware image)
+        run: echo "Firmware dry-run skipped in CI (requires --firmware-image)"
+
+  import-check:
+    name: Module Import Check
+    runs-on: ubuntu-latest
+    needs: lint-and-validate
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check all modules importable (stdlib only)
+        run: |
+          python3 -c "
+          from core.engine.config import ApexConfig
+          from core.mutators.mutator_chain import MutatorChain, HavocMutator
+          from core.coverage.coverage_map import CoverageMap
+          from core.scheduler.adaptive_scheduler import AdaptiveScheduler
+          from core.triage.crash_analyzer import CrashAnalyzer, ExecutionResult
+          print('All core modules import cleanly')
+          "
