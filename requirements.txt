@@ -1,0 +1,41 @@
+# APEX Fuzzer — Python Dependencies
+# Install: pip install -r requirements.txt
+
+# ── Core (required) ───────────────────────────────────────────────────────────
+# No mandatory third-party packages — core fuzzer runs with Python stdlib only.
+# All packages below unlock optional features.
+
+# ── Coverage collection ───────────────────────────────────────────────────────
+# Shared memory interface for AFL++ SHM coverage maps
+sysv_ipc>=1.1.0
+
+# ── Binary instrumentation / coverage ────────────────────────────────────────
+# Frida — dynamic instrumentation for binary-only targets
+# Enables: binary coverage collection, CmpLog hooks, Frida stalker
+frida>=16.0.0
+frida-tools>=12.0.0
+
+# ── Symbolic execution ────────────────────────────────────────────────────────
+# angr — binary analysis + symbolic execution hybrid
+# Enables: --symbolic flag, deep path exploration on stall
+# Note: large install (~500MB), takes a few minutes
+angr>=9.2.0
+
+# ── ML-guided scheduling ─────────────────────────────────────────────────────
+# scikit-learn + numpy — GradientBoosting energy scheduler
+# Enables: --ml-mutator flag
+scikit-learn>=1.3.0
+numpy>=1.24.0
+
+# ── System monitoring ────────────────────────────────────────────────────────
+# Process and resource monitoring for workers
+psutil>=5.9.0
+
+# ── Optional extras ──────────────────────────────────────────────────────────
+# Uncomment if you want these features:
+
+# For async WebSocket dashboard (alternative to built-in server)
+# websockets>=11.0
+
+# For structured crash output to external systems
+# requests>=2.31.0
